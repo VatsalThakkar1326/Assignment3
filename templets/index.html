@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <h1>Student Management</h1>
+    
+    <!-- Form to add a new student -->
+    <form id="student-form">
+        <input type="text" id="first_name" placeholder="First Name" required>
+        <input type="text" id="last_name" placeholder="Last Name" required>
+        <input type="date" id="dob" required>
+        <input type="number" id="amount_due" placeholder="Amount Due" required>
+        <button type="submit">Add Student</button>
+    </form>
+
+    <!-- Section to display all students -->
+    <h2>All Students</h2>
+    <table id="students-table">
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Date of Birth</th>
+                <th>Amount Due</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="students-list"></tbody>
+    </table>
+
+    <!-- Form to search for students -->
+    <h2>Search Students</h2>
+    <form id="search-form">
+        <input type="text" id="search_id" placeholder="Student ID">
+        <input type="text" id="search_first_name" placeholder="First Name">
+        <input type="text" id="search_last_name" placeholder="Last Name">
+        <button type="submit">Search</button>
+    </form>
+    <table id="search-results-table">
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Date of Birth</th>
+                <th>Amount Due</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="search-results"></tbody>
+    </table>
+
+    <script>
+        document.getElementById('student-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const first_name = document.getElementById('first_name').value;
+            const last_name = document.getElementById('last_name').value;
+            const dob = document.getElementById('dob').value;
+            const amount_due = document.getElementById('amount_due').value;
+
+            const response = await fetch('/students', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ first_name, last_name, dob, amount_due })
+            });
+
+            if (response.ok) {
+                loadStudents();
+                document.getElementById('student-form').reset();
+            }
+        });
+
+        document.getElementById('search-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const student_id = document.getElementById('search_id').value;
+            const first_name = document.getElementById('search_first_name').value;
+            const last_name = document.getElementById('search_last_name').value;
+
+            let url = '';
+            if (student_id) {
+                url = `/students/${student_id}`;
+            } else {
+                const params = new URLSearchParams();
+                if (first_name) {
+                    params.append('first_name', first_name);
+                }
+                if (last_name) {
+                    params.append('last_name', last_name);
+                }
+                url = `/search_students?${params.toString()}`;
+            }
+
+            if (url) {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const results = await response.json();
+                    const resultsList = document.getElementById('search-results');
+                    resultsList.innerHTML = '';
+                    if (Array.isArray(results)) {
+                        results.forEach(student => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${student.student_id}</td>
+                                <td>${student.first_name}</td>
+                                <td>${student.last_name}</td>
+                                <td>${student.dob}</td>
+                                <td>${student.amount_due}</td>
+                                <td>
+                                    <button onclick="editStudent('${student.student_id}')">Edit</button>
+                                    <button onclick="deleteStudent('${student.student_id}')">Delete</button>
+                                </td>
+                            `;
+                            resultsList.appendChild(tr);
+                        });
+                    } else {
+                        const student = results;
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${student.student_id}</td>
+                            <td>${student.first_name}</td>
+                            <td>${student.last_name}</td>
+                            <td>${student.dob}</td>
+                            <td>${student.amount_due}</td>
+                            <td>
+                                <button onclick="editStudent('${student.student_id}')">Edit</button>
+                                <button onclick="deleteStudent('${student.student_id}')">Delete</button>
+                            </td>
+                        `;
+                        resultsList.appendChild(tr);
+                    }
+                }
+            }
+        });
+
+        async function loadStudents() {
+            const response = await fetch('/students');
+            if (response.ok) {
+                const students = await response.json();
+                const studentsList = document.getElementById('students-list');
+                studentsList.innerHTML = '';
+                students.forEach(student => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${student.student_id}</td>
+                        <td>${student.first_name}</td>
+                        <td>${student.last_name}</td>
+                        <td>${student.dob}</td>
+                        <td>${student.amount_due}</td>
+                        <td>
+                            <button onclick="editStudent('${student.student_id}')">Edit</button>
+                            <button onclick="deleteStudent('${student.student_id}')">Delete</button>
+                        </td>
+                    `;
+                    studentsList.appendChild(tr);
+                });
+            }
+        }
+
+        async function editStudent(student_id) {
+            const first_name = prompt("Enter new first name:");
+            const last_name = prompt("Enter new last name:");
+            const dob = prompt("Enter new date of birth (YYYY-MM-DD):");
+            const amount_due = prompt("Enter new amount due:");
+
+            if (first_name && last_name && dob && amount_due) {
+                const response = await fetch(`/students/${student_id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ first_name, last_name, dob, amount_due })
+                });
+
+                if (response.ok) {
+                    loadStudents();
+                }
+            }
+        }
+
+        async function deleteStudent(student_id) {
+            const response = await fetch(`/students/${student_id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadStudents();
+            }
+        }
+
+        loadStudents();
+    </script>
+</body>
+</html>
